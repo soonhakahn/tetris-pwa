@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0f14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Tetris (다래)</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #0b0f14; color: #e6edf3;
+      display: grid; place-items: center; min-height: 100vh;
+    }
+    .wrap { display: grid; grid-template-columns: auto 260px; gap: 16px; align-items: start; padding: 16px; }
+    canvas { background: #06080b; border: 1px solid #223; border-radius: 10px; image-rendering: pixelated; touch-action: none; }
+    .panel {
+      border: 1px solid #223; border-radius: 10px; padding: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+    .row { display:flex; justify-content:space-between; margin: 6px 0; }
+    kbd { background:#111827; border:1px solid #334155; border-bottom-width:2px; padding:2px 6px; border-radius:6px; }
+    button {
+      width:100%; padding:10px 12px; margin-top: 10px; border-radius: 10px;
+      border: 1px solid #334155; background:#111827; color:#e6edf3; font-weight:600;
+      cursor:pointer;
+    }
+    button:hover { background:#0b1220; }
+    .hint { font-size: 12px; opacity: .85; line-height: 1.45; }
+    .hr { height:1px; background:#223; margin:10px 0; }
+    .touch {
+      display: none;
+      margin-top: 10px;
+      gap: 8px;
+    }
+    .touch button { width: auto; flex: 1; }
+    @media (max-width: 820px) {
+      .wrap { grid-template-columns: 1fr; }
+      .touch { display: flex; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="game" width="320" height="640" aria-label="Tetris canvas"></canvas>
+
+    <div class="panel">
+      <div class="row"><div>점수</div><div id="score">0</div></div>
+      <div class="row"><div>레벨</div><div id="level">1</div></div>
+      <div class="row"><div>라인</div><div id="lines">0</div></div>
+      <div class="hr"></div>
+      <div class="hint">
+        키보드 조작:
+        <ul>
+          <li>이동: <kbd>←</kbd> <kbd>→</kbd></li>
+          <li>소프트 드랍: <kbd>↓</kbd></li>
+          <li>하드 드랍: <kbd>Space</kbd></li>
+          <li>회전: <kbd>↑</kbd> 또는 <kbd>X</kbd></li>
+          <li>반대 회전: <kbd>Z</kbd></li>
+          <li>홀드: <kbd>C</kbd></li>
+          <li>일시정지: <kbd>P</kbd></li>
+          <li>새 게임: <kbd>R</kbd></li>
+        </ul>
+        iPhone에서는 아래 터치 버튼으로도 기본 조작이 가능합니다.
+      </div>
+      <div class="touch">
+        <button id="tLeft">←</button>
+        <button id="tRot">⟲</button>
+        <button id="tRight">→</button>
+      </div>
+      <div class="touch">
+        <button id="tDown">↓</button>
+        <button id="tDrop">DROP</button>
+        <button id="tHold">HOLD</button>
+      </div>
+      <button id="btn">Start</button>
+    </div>
+  </div>
+
+<script>
+// PWA: service worker (HTTPS에서만 동작하는 경우가 많습니다)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const levelEl = document.getElementById('level');
+  const linesEl = document.getElementById('lines');
+  const btn = document.getElementById('btn');
+
+  // Board settings
+  const COLS = 10;
+  const ROWS = 20;
+  const BLOCK = 32; // pixels
+  const W = COLS * BLOCK;
+  const H = ROWS * BLOCK;
+  canvas.width = W;
+  canvas.height = H;
+
+  const COLORS = {
+    I: '#22c55e',
+    O: '#eab308',
+    T: '#a855f7',
+    S: '#06b6d4',
+    Z: '#ef4444',
+    J: '#3b82f6',
+    L: '#f97316',
+    G: '#334155' // ghost
+  };
+
+  const SHAPES = {
+    I: [
+      [0,0,0,0],
+      [1,1,1,1],
+      [0,0,0,0],
+      [0,0,0,0],
+    ],
+    O: [
+      [1,1],
+      [1,1],
+    ],
+    T: [
+      [0,1,0],
+      [1,1,1],
+      [0,0,0],
+    ],
+    S: [
+      [0,1,1],
+      [1,1,0],
+      [0,0,0],
+    ],
+    Z: [
+      [1,1,0],
+      [0,1,1],
+      [0,0,0],
+    ],
+    J: [
+      [1,0,0],
+      [1,1,1],
+      [0,0,0],
+    ],
+    L: [
+      [0,0,1],
+      [1,1,1],
+      [0,0,0],
+    ],
+  };
+
+  const PIECES = Object.keys(SHAPES);
+
+  function cloneMatrix(m) { return m.map(r => r.slice()); }
+
+  function rotate(matrix, dir) {
+    const m = cloneMatrix(matrix);
+    const N = m.length;
+    const res = Array.from({length: N}, () => Array(N).fill(0));
+    for (let y=0; y<N; y++) {
+      for (let x=0; x<N; x++) {
+        if (dir > 0) res[x][N-1-y] = m[y][x];
+        else res[N-1-x][y] = m[y][x];
+      }
+    }
+    return res;
+  }
+
+  function makeBoard() {
+    return Array.from({length: ROWS}, () => Array(COLS).fill(''));
+  }
+
+  function bag7() {
+    const a = PIECES.slice();
+    for (let i=a.length-1; i>0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  let board = makeBoard();
+  let queue = [];
+
+  let current = null; // {type, matrix, x, y}
+  let hold = null;
+  let holdUsed = false;
+
+  let score = 0;
+  let lines = 0;
+  let level = 1;
+
+  let running = false;
+  let paused = false;
+
+  let lastTime = 0;
+  let acc = 0;
+
+  function dropInterval() {
+    return Math.max(80, 800 - (level-1)*60);
+  }
+
+  function refill() {
+    while (queue.length < 7) queue.push(...bag7());
+  }
+
+  function spawn() {
+    refill();
+    const type = queue.shift();
+    let matrix = cloneMatrix(SHAPES[type]);
+    if (type === 'I') matrix = cloneMatrix(SHAPES.I);
+    if (type !== 'I' && type !== 'O') {
+      // ensure 3x3
+      const res = Array.from({length:3}, () => Array(3).fill(0));
+      for (let y=0; y<matrix.length; y++) for (let x=0; x<matrix[0].length; x++) res[y][x] = matrix[y][x];
+      matrix = res;
+    }
+
+    const x = Math.floor((COLS - matrix[0].length)/2);
+    const y = -1;
+    current = { type, matrix, x, y };
+    holdUsed = false;
+
+    if (collides(board, current)) {
+      running = false;
+      paused = false;
+      btn.textContent = 'Start';
+    }
+  }
+
+  function collides(b, piece) {
+    const {matrix, x: px, y: py} = piece;
+    for (let y=0; y<matrix.length; y++) {
+      for (let x=0; x<matrix[y].length; x++) {
+        if (!matrix[y][x]) continue;
+        const bx = px + x;
+        const by = py + y;
+        if (bx < 0 || bx >= COLS || by >= ROWS) return true;
+        if (by >= 0 && b[by][bx]) return true;
+      }
+    }
+    return false;
+  }
+
+  function merge(b, piece) {
+    const {matrix, x: px, y: py, type} = piece;
+    for (let y=0; y<matrix.length; y++) {
+      for (let x=0; x<matrix[y].length; x++) {
+        if (!matrix[y][x]) continue;
+        const bx = px + x;
+        const by = py + y;
+        if (by >= 0) b[by][bx] = type;
+      }
+    }
+  }
+
+  function clearLines() {
+    let cleared = 0;
+    outer: for (let y=ROWS-1; y>=0; y--) {
+      for (let x=0; x<COLS; x++) {
+        if (!board[y][x]) continue outer;
+      }
+      board.splice(y, 1);
+      board.unshift(Array(COLS).fill(''));
+      cleared++;
+      y++;
+    }
+
+    if (cleared) {
+      const table = [0, 100, 300, 500, 800];
+      score += table[cleared] * level;
+      lines += cleared;
+      level = 1 + Math.floor(lines / 10);
+    }
+  }
+
+  function hardDrop() {
+    if (!current) return;
+    let d = 0;
+    const temp = {...current};
+    while (true) {
+      temp.y++;
+      if (collides(board, temp)) { temp.y--; break; }
+      d++;
+    }
+    current.y = temp.y;
+    score += d * 2;
+    lock();
+  }
+
+  function softDrop() {
+    if (!current) return;
+    const temp = {...current, y: current.y + 1};
+    if (!collides(board, temp)) {
+      current.y++;
+      score += 1;
+    } else {
+      lock();
+    }
+  }
+
+  function move(dx) {
+    if (!current) return;
+    const temp = {...current, x: current.x + dx};
+    if (!collides(board, temp)) current.x += dx;
+  }
+
+  function rotatePiece(dir) {
+    if (!current) return;
+    if (current.type === 'O') return;
+
+    const rotated = rotate(current.matrix, dir);
+    const kicks = [0, -1, 1, -2, 2];
+    for (const k of kicks) {
+      const temp = {...current, matrix: rotated, x: current.x + k};
+      if (!collides(board, temp)) {
+        current.matrix = rotated;
+        current.x += k;
+        return;
+      }
+    }
+  }
+
+  function ghostY() {
+    if (!current) return 0;
+    const temp = {...current};
+    while (true) {
+      temp.y++;
+      if (collides(board, temp)) { temp.y--; break; }
+    }
+    return temp.y;
+  }
+
+  function lock() {
+    merge(board, current);
+    clearLines();
+    spawn();
+  }
+
+  function doHold() {
+    if (!current || holdUsed) return;
+    holdUsed = true;
+    const curType = current.type;
+    if (!hold) {
+      hold = curType;
+      spawn();
+    } else {
+      const swap = hold;
+      hold = curType;
+      let matrix = cloneMatrix(SHAPES[swap]);
+      if (swap === 'I') matrix = cloneMatrix(SHAPES.I);
+      if (swap !== 'I' && swap !== 'O') {
+        const res = Array.from({length:3}, () => Array(3).fill(0));
+        for (let y=0; y<matrix.length; y++) for (let x=0; x<matrix[0].length; x++) res[y][x] = matrix[y][x];
+        matrix = res;
+      }
+      const x = Math.floor((COLS - matrix[0].length)/2);
+      const y = -1;
+      current = { type: swap, matrix, x, y };
+      if (collides(board, current)) {
+        running = false;
+        paused = false;
+        btn.textContent = 'Start';
+      }
+    }
+  }
+
+  function reset() {
+    board = makeBoard();
+    queue = [];
+    current = null;
+    hold = null;
+    holdUsed = false;
+    score = 0;
+    lines = 0;
+    level = 1;
+    lastTime = 0;
+    acc = 0;
+    spawn();
+    draw();
+    updateHud();
+  }
+
+  function updateHud() {
+    scoreEl.textContent = String(score);
+    linesEl.textContent = String(lines);
+    levelEl.textContent = String(level);
+    btn.textContent = running ? (paused ? 'Resume' : 'Pause') : 'Start';
+  }
+
+  function drawCell(x, y, color, alpha = 1) {
+    const px = x * BLOCK;
+    const py = y * BLOCK;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.fillRect(px + 1, py + 1, BLOCK - 2, BLOCK - 2);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let x=1; x<COLS; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x*BLOCK, 0);
+      ctx.lineTo(x*BLOCK, H);
+      ctx.stroke();
+    }
+    for (let y=1; y<ROWS; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y*BLOCK);
+      ctx.lineTo(W, y*BLOCK);
+      ctx.stroke();
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#06080b';
+    ctx.fillRect(0,0,W,H);
+
+    for (let y=0; y<ROWS; y++) {
+      for (let x=0; x<COLS; x++) {
+        const t = board[y][x];
+        if (t) drawCell(x,y,COLORS[t]);
+      }
+    }
+
+    if (current) {
+      const gy = ghostY();
+      const {matrix, x: px} = current;
+      for (let y=0; y<matrix.length; y++) {
+        for (let x=0; x<matrix[y].length; x++) {
+          if (!matrix[y][x]) continue;
+          const by = gy + y;
+          if (by >= 0) drawCell(px + x, by, COLORS.G, 0.25);
+        }
+      }
+    }
+
+    if (current) {
+      const {matrix, x: px, y: py, type} = current;
+      for (let y=0; y<matrix.length; y++) {
+        for (let x=0; x<matrix[y].length; x++) {
+          if (!matrix[y][x]) continue;
+          const by = py + y;
+          if (by >= 0) drawCell(px + x, by, COLORS[type]);
+        }
+      }
+    }
+
+    drawGrid();
+
+    if (!running) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = '#e6edf3';
+      ctx.font = '700 28px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('TETRIS', W/2, H/2 - 20);
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.fillText('Start 버튼 또는 R 키로 시작', W/2, H/2 + 14);
+    } else if (paused) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = '#e6edf3';
+      ctx.font = '700 22px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('PAUSED', W/2, H/2);
+    }
+  }
+
+  function tick(t) {
+    if (!running) { draw(); updateHud(); return; }
+    if (paused) { draw(); updateHud(); requestAnimationFrame(tick); return; }
+
+    if (!lastTime) lastTime = t;
+    const dt = t - lastTime;
+    lastTime = t;
+    acc += dt;
+
+    const interval = dropInterval();
+    while (acc >= interval) {
+      acc -= interval;
+      const temp = {...current, y: current.y + 1};
+      if (!collides(board, temp)) current.y++;
+      else lock();
+    }
+
+    draw();
+    updateHud();
+    requestAnimationFrame(tick);
+  }
+
+  function start() {
+    if (!current) reset();
+    running = true;
+    paused = false;
+    lastTime = 0;
+    acc = 0;
+    requestAnimationFrame(tick);
+  }
+
+  function togglePause() {
+    if (!running) return;
+    paused = !paused;
+    updateHud();
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (k === 'r' || k === 'R') { reset(); start(); return; }
+    if (!running) {
+      if (k === 'Enter' || k === ' ') { reset(); start(); }
+      return;
+    }
+    if (k === 'p' || k === 'P') { togglePause(); return; }
+    if (paused) return;
+
+    if (k === 'ArrowLeft') { e.preventDefault(); move(-1); }
+    else if (k === 'ArrowRight') { e.preventDefault(); move(1); }
+    else if (k === 'ArrowDown') { e.preventDefault(); softDrop(); }
+    else if (k === 'ArrowUp' || k === 'x' || k === 'X') { e.preventDefault(); rotatePiece(+1); }
+    else if (k === 'z' || k === 'Z') { e.preventDefault(); rotatePiece(-1); }
+    else if (k === ' ') { e.preventDefault(); hardDrop(); }
+    else if (k === 'c' || k === 'C') { e.preventDefault(); doHold(); }
+
+    draw();
+    updateHud();
+  });
+
+  btn.addEventListener('click', () => {
+    if (!running) { reset(); start(); }
+    else togglePause();
+  });
+
+  function bindTouch(id, fn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const handler = (e) => { e.preventDefault(); if (running && !paused) fn(); draw(); updateHud(); };
+    el.addEventListener('touchstart', handler, {passive:false});
+    el.addEventListener('mousedown', (e)=>{ e.preventDefault(); if (running && !paused) fn(); draw(); updateHud(); });
+  }
+  bindTouch('tLeft', () => move(-1));
+  bindTouch('tRight', () => move(1));
+  bindTouch('tRot', () => rotatePiece(+1));
+  bindTouch('tDown', () => softDrop());
+  bindTouch('tDrop', () => hardDrop());
+  bindTouch('tHold', () => doHold());
+
+  reset();
+  draw();
+  updateHud();
+})();
+</script>
+</body>
+</html>
