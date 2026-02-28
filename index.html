@@ -21,7 +21,7 @@
         radial-gradient(circle at 80% 0%, #4b1d6e 0%, transparent 33%),
         linear-gradient(160deg, #080b17 0%, #0f1326 55%, #111a30 100%);
       display: grid;
-      place-items: center;
+      place-items: start center;
       padding: max(12px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
     }
     .wrap {
@@ -43,6 +43,7 @@
       display: block;
       width: min(90vw, 480px);
       height: auto;
+      max-height: 68dvh;
       border-radius: 12px;
       border: 1px solid rgba(141, 160, 255, .22);
       background: #06080b;
@@ -61,7 +62,8 @@
       background: rgba(255,255,255,.03);
     }
     .mini label { display:block; font-size:12px; opacity:.85; margin-bottom:6px; }
-    .mini canvas { width: 100%; height: auto; image-rendering: pixelated; background: #080b13; border-radius: 8px; }
+    .mini canvas { width: 100%; height: auto;
+      max-height: 68dvh; image-rendering: pixelated; background: #080b13; border-radius: 8px; }
     .hint { font-size: 12px; opacity: .9; line-height: 1.45; }
     .hr { height:1px; background: rgba(141,160,255,.18); margin:10px 0; }
     button {
@@ -72,7 +74,7 @@
     }
     button:active { transform: translateY(1px); }
     .touch { display: none; margin-top: 8px; gap: 8px; }
-    .touch button { margin: 0; }
+    .touch button { margin: 0; min-height: 48px; font-size: 16px; }
     .sub { opacity:.75; font-size:11px; margin-top:8px; }
     @media (max-width: 860px) {
       .wrap { grid-template-columns: 1fr; }
@@ -247,14 +249,26 @@ if ('serviceWorker' in navigator) {
   });
 
   btn.addEventListener('click', ()=>{ if(!running){ reset(); start(); } else togglePause(); draw(); hud(); });
-  const bindTouch=(id,fn)=>{ const el=document.getElementById(id); if(!el) return; const run=e=>{ e.preventDefault(); if(running&&!paused){ fn(); draw(); hud(); }}; el.addEventListener('touchstart',run,{passive:false}); el.addEventListener('mousedown',run); };
-  bindTouch('tLeft',()=>move(-1)); bindTouch('tRight',()=>move(1)); bindTouch('tRot',()=>rotatePiece(+1)); bindTouch('tDown',()=>softDrop()); bindTouch('tDrop',()=>hardDrop()); bindTouch('tHold',()=>holdSwap());
+  const bindTap=(id,fn)=>{ const el=document.getElementById(id); if(!el) return; const run=e=>{ e.preventDefault(); if(running&&!paused){ fn(); draw(); hud(); }}; el.addEventListener('touchstart',run,{passive:false}); el.addEventListener('mousedown',run); };
+  function bindRepeat(id, fn, first=130, repeat=70){
+    const el=document.getElementById(id); if(!el) return; let t1=null,t2=null;
+    const clear=()=>{ if(t1) clearTimeout(t1); if(t2) clearInterval(t2); t1=t2=null; };
+    const start=(e)=>{ e.preventDefault(); if(!running||paused) return; fn(); draw(); hud(); t1=setTimeout(()=>{ t2=setInterval(()=>{ if(running&&!paused){ fn(); draw(); hud(); } }, repeat); }, first); };
+    ['touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,start,{passive:false}));
+    ['touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>el.addEventListener(ev,clear));
+  }
+  bindRepeat('tLeft',()=>move(-1));
+  bindRepeat('tRight',()=>move(1));
+  bindRepeat('tDown',()=>softDrop(),120,60);
+  bindTap('tRot',()=>rotatePiece(+1)); bindTap('tDrop',()=>hardDrop()); bindTap('tHold',()=>holdSwap());
 
   // swipe/tap controls on canvas (mobile)
   let sx=0, sy=0, st=0, lastTap=0;
-  canvas.addEventListener('touchstart',(e)=>{ const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; st=Date.now(); }, {passive:true});
+  canvas.addEventListener('touchstart',(e)=>{ e.preventDefault(); const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; st=Date.now(); }, {passive:false});
   canvas.addEventListener('touchend',(e)=>{
-    if(!running||paused) return;
+    e.preventDefault();
+    if(!running){ reset(); start(); return; }
+    if(paused){ paused=false; draw(); hud(); return; }
     const t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy, dt=Date.now()-st;
     const adx=Math.abs(dx), ady=Math.abs(dy);
     if(adx<14 && ady<14 && dt<220){
@@ -264,7 +278,11 @@ if ('serviceWorker' in navigator) {
     } else if(adx>ady){ dx>0 ? move(1) : move(-1); }
     else { if(dy>24) softDrop(); else rotatePiece(+1); }
     draw(); hud();
-  }, {passive:true});
+  }, {passive:false});
+
+
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden && running && !paused){ paused=true; draw(); hud(); } });
+  window.addEventListener('blur', ()=>{ if(running && !paused){ paused=true; draw(); hud(); } });
 
   reset(); draw(); hud();
 })();
