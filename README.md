@@ -1,2 +1,3 @@
 # tetris-pwa
-tetris game
+
+https://soonhakahn.github.io/tetris-pwa/

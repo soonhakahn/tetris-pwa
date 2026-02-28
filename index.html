@@ -1,1030 +1,310 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>🥊 Boxing 3D Career</title>
-<style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:Arial,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
-canvas{display:block;position:fixed;top:0;left:0;z-index:0}
-
-/* ── SCREENS ── */
-.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
-.screen.off{display:none!important}
-
-/* Title */
-#s-title{background:radial-gradient(ellipse at 50% 40%,#1a0800,#000)}
-#s-title h1{font-size:clamp(50px,12vw,90px);font-weight:900;color:#ffd700;text-shadow:0 0 40px #ff6600,0 0 80px #ff3300;letter-spacing:5px;margin-bottom:6px}
-#s-title .sub{color:rgba(255,255,255,.5);font-size:clamp(13px,2.5vw,16px);margin-bottom:36px}
-
-/* Stage Map */
-#s-stages{background:rgba(0,0,0,.93)}
-#s-stages h2{color:#ffd700;font-size:clamp(20px,5vw,34px);font-weight:900;margin-bottom:4px;letter-spacing:2px}
-#s-stages .ssub{color:rgba(255,255,255,.45);font-size:12px;margin-bottom:22px}
-.stages-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;max-width:720px;width:92%}
-.sc{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.13);border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s}
-.sc:hover:not(.locked){background:rgba(255,215,0,.1);border-color:#ffd700;transform:translateY(-2px)}
-.sc.locked{opacity:.38;cursor:not-allowed;filter:grayscale(.6)}
-.sc.current{border-color:#ffd700;box-shadow:0 0 18px rgba(255,215,0,.3)}
-.sc.cleared{border-color:#00e676}
-.sc-num{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
-.sc-icon{font-size:34px;margin-bottom:7px}
-.sc-name{color:#fff;font-size:clamp(12px,2.5vw,14px);font-weight:bold;margin-bottom:4px}
-.sc-desc{color:rgba(255,255,255,.4);font-size:10px;margin-bottom:7px;line-height:1.4;min-height:26px}
-.sc-stars{font-size:12px;letter-spacing:1px}
-
-/* VS Screen */
-#s-vs{background:rgba(0,0,0,.93)}
-.vs-wrap{display:flex;align-items:center;justify-content:center;gap:clamp(20px,5vw,50px);margin-bottom:20px;width:92%;max-width:580px}
-.vs-f{text-align:center;flex:1}
-.vs-icon{font-size:clamp(44px,10vw,64px);margin-bottom:6px}
-.vs-name{font-size:clamp(15px,3.5vw,22px);font-weight:900;margin-bottom:3px}
-.vs-title{font-size:11px;color:rgba(255,255,255,.45)}
-.vs-sep{font-size:clamp(26px,6vw,48px);font-weight:900;color:#ff3333;text-shadow:0 0 18px #f00;flex-shrink:0}
-.vs-stats{width:92%;max-width:420px;background:rgba(255,255,255,.05);border-radius:12px;padding:14px 16px;margin-bottom:20px}
-.vs-stats h3{color:#ffd700;font-size:12px;font-weight:bold;margin-bottom:10px;letter-spacing:1px}
-.srow{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:12px;color:rgba(255,255,255,.65)}
-.srow:last-child{margin-bottom:0}
-.sbar-bg{flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:3px;margin:0 9px;overflow:hidden}
-.sbar{height:100%;border-radius:3px}
-
-/* HUD */
-#hud{position:fixed;top:0;left:0;width:100%;pointer-events:none;padding:10px 16px;z-index:5}
-.hud-row{display:flex;align-items:flex-start;gap:9px}
-.h-f{flex:1}
-.h-name{color:#fff;font-size:clamp(10px,2vw,13px);font-weight:bold;text-shadow:1px 1px 2px #000;margin-bottom:3px}
-.h-name.right{text-align:right}
-.h-bg{height:17px;background:rgba(0,0,0,.6);border-radius:9px;overflow:hidden;border:1px solid rgba(255,255,255,.18)}
-.h-bar{height:100%;border-radius:9px;transition:width .18s ease}
-#php{background:linear-gradient(90deg,#00e676,#69f0ae)}
-#ehp{background:linear-gradient(90deg,#ff1744,#ff6d00)}
-.h-f.right .h-bg{direction:rtl}
-.round-box{min-width:96px;text-align:center}
-#rnd-d{color:#ffd700;font-size:10px;font-weight:bold;text-shadow:1px 1px 2px #000}
-#tmr-d{color:#fff;font-size:clamp(20px,4vw,28px);font-weight:bold;text-shadow:0 0 8px #ffd700}
-#stage-d{color:rgba(255,215,0,.65);font-size:9px;margin-top:1px}
-
-/* Stamina */
-#stamw{position:fixed;pointer-events:none;z-index:5;text-align:center}
-#stamw label{color:rgba(255,255,255,.45);font-size:10px;display:block;margin-bottom:2px}
-#stamtrk{width:140px;height:7px;background:rgba(0,0,0,.5);border-radius:4px;overflow:hidden;margin:0 auto}
-#stamfil{height:100%;border-radius:4px;transition:width .1s;background:linear-gradient(90deg,#2979ff,#40c4ff)}
-
-/* Combo */
-#combo{position:fixed;left:50%;transform:translateX(-50%);color:#ffd700;font-weight:900;text-shadow:0 0 14px #ff8c00;pointer-events:none;z-index:6;display:none;text-align:center}
-
-/* Big message */
-#bigmsg{position:fixed;top:44%;left:50%;transform:translate(-50%,-50%);font-weight:900;color:#fff;text-shadow:0 0 24px #ffd700,2px 2px 4px #000;text-align:center;pointer-events:none;z-index:20;display:none;white-space:pre-line;line-height:1.2}
-
-/* Hint */
-#hint{position:fixed;right:14px;color:rgba(255,255,255,.35);font-size:9px;line-height:2;text-align:right;pointer-events:none;z-index:5}
-
-/* ── TOUCH CONTROLS ── */
-#tc{position:fixed;bottom:0;left:0;width:100%;pointer-events:none;z-index:8;display:none}
-.tbtn{position:absolute;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22);border-radius:50%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);cursor:pointer;pointer-events:all;-webkit-tap-highlight-color:transparent;transition:background .08s;font-size:clamp(12px,3vw,16px)}
-.tbtn:active,.tbtn.pressed{background:rgba(255,255,255,.28)}
-
-/* Result Screen */
-#s-result{background:rgba(0,0,0,.93)}
-.r-icon{font-size:clamp(54px,12vw,80px);margin-bottom:10px}
-.r-title{font-size:clamp(26px,6vw,46px);font-weight:900;margin-bottom:5px}
-.r-sub{color:rgba(255,255,255,.5);font-size:clamp(12px,2.5vw,15px);margin-bottom:16px}
-.r-stars{font-size:clamp(26px,5vw,38px);letter-spacing:5px;margin-bottom:22px}
-.r-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
-
-/* Clear */
-#s-clear{background:radial-gradient(ellipse at 50% 50%,#1a1200,#000)}
-#s-clear h1{font-size:clamp(28px,7vw,56px);color:#ffd700;font-weight:900;text-shadow:0 0 32px #ff8c00;margin-bottom:8px}
-#s-clear p{color:rgba(255,255,255,.55);font-size:clamp(13px,2.5vw,16px);margin-bottom:24px}
-
-/* Buttons */
-.btn-g{padding:13px 54px;font-size:clamp(15px,3vw,20px);font-weight:bold;background:linear-gradient(135deg,#ffd700,#ff8c00);color:#000;border:none;border-radius:12px;cursor:pointer;box-shadow:0 4px 22px rgba(255,150,0,.5);transition:transform .1s,box-shadow .1s;pointer-events:all}
-.btn-g:active{transform:scale(.97)}
-.btn-g:hover{transform:scale(1.04);box-shadow:0 6px 28px rgba(255,150,0,.7)}
-.btn-o{padding:11px 36px;font-size:clamp(13px,2.5vw,17px);font-weight:bold;background:transparent;color:#ffd700;border:2px solid #ffd700;border-radius:11px;cursor:pointer;transition:background .1s;pointer-events:all}
-.btn-o:hover{background:rgba(255,215,0,.1)}
-.btn-sm{padding:9px 28px;font-size:clamp(12px,2.3vw,15px);font-weight:bold;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;cursor:pointer;pointer-events:all}
-.btn-sm:hover{background:rgba(255,255,255,.18)}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Tetris Neon</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #eef4ff;
+      min-height: 100dvh;
+      background:
+        radial-gradient(circle at 20% 10%, #243b77 0%, transparent 35%),
+        radial-gradient(circle at 80% 0%, #4b1d6e 0%, transparent 33%),
+        linear-gradient(160deg, #080b17 0%, #0f1326 55%, #111a30 100%);
+      display: grid;
+      place-items: start center;
+      padding: max(12px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
+    }
+    .wrap { width: min(980px, 100%); display:grid; grid-template-columns:auto 300px; gap:14px; align-items:start; }
+    .gameBox,.panel{
+      background: rgba(11, 18, 35, .55);
+      border: 1px solid rgba(141, 160, 255, .25);
+      border-radius: 18px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 12px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .gameBox { padding:10px; }
+    canvas#game {
+      display:block; width:min(90vw,480px); max-height:68dvh; height:auto;
+      border-radius:12px; border:1px solid rgba(141, 160, 255, .22);
+      background:#06080b; image-rendering:pixelated; touch-action:none;
+    }
+    .panel{ padding:14px; }
+    .title{ font-weight:800; margin-bottom:10px; }
+    .row{ display:flex; justify-content:space-between; margin:7px 0; }
+    .row b{ color:#8de1ff; }
+    .miniWrap{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0 12px; }
+    .mini{ border:1px solid rgba(141,160,255,.25); border-radius:12px; padding:8px; background:rgba(255,255,255,.03); }
+    .mini label{ display:block; font-size:12px; opacity:.85; margin-bottom:6px; }
+    .mini canvas{ width:100%; max-height:68dvh; height:auto; image-rendering:pixelated; background:#080b13; border-radius:8px; }
+    .hint{ font-size:12px; opacity:.9; line-height:1.45; }
+    .hr{ height:1px; background:rgba(141,160,255,.18); margin:10px 0; }
+    button{
+      width:100%; padding:11px 12px; margin-top:10px; border-radius:12px;
+      border:1px solid rgba(141,160,255,.35);
+      background:linear-gradient(180deg,#1f2a48,#121a33);
+      color:#eef4ff; font-weight:700; cursor:pointer;
+    }
+    .touch{ display:none; margin-top:8px; gap:8px; }
+    .touch button{ margin:0; min-height:48px; font-size:16px; }
+    .sub{ opacity:.75; font-size:11px; margin-top:8px; }
+    @media (max-width:860px){ .wrap{grid-template-columns:1fr;} .touch{display:flex;} }
+  </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
+  <div class="wrap">
+    <div class="gameBox"><canvas id="game" width="320" height="640" aria-label="Tetris canvas"></canvas></div>
+    <div class="panel">
+      <div class="title">Tetris Neon</div>
+      <div class="row"><span>점수</span><b id="score">0</b></div>
+      <div class="row"><span>레벨</span><b id="level">1</b></div>
+      <div class="row"><span>라인</span><b id="lines">0</b></div>
+      <div class="row"><span>최고점</span><b id="best">0</b></div>
 
-<!-- ① Title -->
-<div id="s-title" class="screen">
-  <h1>🥊 BOXING 3D</h1>
-  <p class="sub">커리어 모드로 챔피언에 도전하라!</p>
-  <button class="btn-g" id="btn-career">▶ 커리어 모드</button>
-  <br><button class="btn-sm" id="btn-sound">🔊 사운드 ON</button>
-  <br><br>
-  <div style="color:rgba(255,255,255,.35);font-size:12px;line-height:2;text-align:center">
-    WASD 이동 &nbsp;|&nbsp; J 잽 &nbsp;K 스트레이트 &nbsp;L 훅 &nbsp;U 어퍼컷 &nbsp;|&nbsp; SPACE 블록
-  </div>
-</div>
+      <div class="miniWrap">
+        <div class="mini"><label>HOLD</label><canvas id="holdCv" width="96" height="96"></canvas></div>
+        <div class="mini"><label>NEXT</label><canvas id="nextCv" width="96" height="96"></canvas></div>
+      </div>
 
-<!-- ② Stage Map -->
-<div id="s-stages" class="screen off">
-  <h2>🗺️ STAGE SELECT</h2>
-  <p class="ssub">스테이지를 선택하세요</p>
-  <div class="stages-grid" id="stages-grid"></div>
-  <br>
-  <button class="btn-sm" id="btn-back-title" style="margin-top:6px">← 타이틀</button>
-</div>
-
-<!-- ③ VS Screen -->
-<div id="s-vs" class="screen off">
-  <div class="vs-wrap">
-    <div class="vs-f">
-      <div class="vs-icon">🥊</div>
-      <div class="vs-name" style="color:#5bc8ff">PLAYER</div>
-      <div class="vs-title">도전자</div>
-    </div>
-    <div class="vs-sep">VS</div>
-    <div class="vs-f">
-      <div class="vs-icon" id="vs-e-icon"></div>
-      <div class="vs-name" id="vs-e-name" style="color:#ff6060"></div>
-      <div class="vs-title" id="vs-e-title"></div>
+      <div class="hr"></div>
+      <div class="hint">←/→ 이동 · ↑(X) 회전 · Z 반회전 · ↓ 소프트드랍 · Space 하드드랍 · C 홀드 · P 일시정지 · R 재시작</div>
+      <div class="touch"><button id="tLeft">←</button><button id="tRot">⟲</button><button id="tRight">→</button></div>
+      <div class="touch"><button id="tDown">↓</button><button id="tDrop">DROP</button><button id="tHold">HOLD</button></div>
+      <button id="btn">Start</button>
+      <button id="soundBtn">🔊 사운드 ON</button>
+      <div class="sub">iPhone: 스와이프 좌/우/아래, 탭 회전, 더블탭 하드드랍</div>
     </div>
   </div>
-  <div class="vs-stats">
-    <h3>상대 능력치</h3>
-    <div class="srow"><span>체력</span><div class="sbar-bg"><div class="sbar" id="vs-hp" style="background:#f44336"></div></div><span id="vs-hp-v"></span></div>
-    <div class="srow"><span>스피드</span><div class="sbar-bg"><div class="sbar" id="vs-sp" style="background:#2196f3"></div></div><span id="vs-sp-v"></span></div>
-    <div class="srow"><span>공격력</span><div class="sbar-bg"><div class="sbar" id="vs-pw" style="background:#ff9800"></div></div><span id="vs-pw-v"></span></div>
-    <div class="srow"><span>방어력</span><div class="sbar-bg"><div class="sbar" id="vs-df" style="background:#4caf50"></div></div><span id="vs-df-v"></span></div>
-  </div>
-  <button class="btn-g" id="btn-fight">⚔️ FIGHT START!</button>
-</div>
 
-<!-- HUD -->
-<div id="hud" style="display:none">
-  <div class="hud-row">
-    <div class="h-f left">
-      <div class="h-name">🔵 PLAYER</div>
-      <div class="h-bg"><div class="h-bar" id="php" style="width:100%"></div></div>
-    </div>
-    <div class="round-box">
-      <div id="rnd-d">ROUND 1/3</div>
-      <div id="tmr-d">1:30</div>
-      <div id="stage-d">STAGE 1</div>
-    </div>
-    <div class="h-f right">
-      <div class="h-name right" id="hud-e-name">CPU 🔴</div>
-      <div class="h-bg"><div class="h-bar" id="ehp" style="width:100%"></div></div>
-    </div>
-  </div>
-</div>
-<div id="stamw" style="display:none"><label>⚡ STAMINA</label><div id="stamtrk"><div id="stamfil" style="width:100%"></div></div></div>
-<div id="combo"></div>
-<div id="hint" style="display:none">J잽 K직선 L훅 U어퍼<br>SPACE:블록<br>WASD:이동</div>
-
-<!-- Touch controls -->
-<div id="tc">
-  <div style="position:absolute;left:10px;bottom:10px;width:clamp(110px,22vw,140px);height:clamp(110px,22vw,140px)">
-    <div class="tbtn" id="tb-up"    style="width:36%;height:36%;top:0;left:32%">▲</div>
-    <div class="tbtn" id="tb-down"  style="width:36%;height:36%;bottom:0;left:32%">▼</div>
-    <div class="tbtn" id="tb-left"  style="width:36%;height:36%;top:32%;left:0">◀</div>
-    <div class="tbtn" id="tb-right" style="width:36%;height:36%;top:32%;right:0">▶</div>
-  </div>
-  <div style="position:absolute;right:10px;bottom:10px;width:clamp(150px,30vw,190px);height:clamp(110px,22vw,140px)">
-    <div class="tbtn" id="tb-j" style="width:33%;height:44%;top:28%;left:0;border-radius:10px;background:rgba(30,100,255,.22);border-color:rgba(30,100,255,.5)">잽</div>
-    <div class="tbtn" id="tb-k" style="width:33%;height:44%;top:28%;right:0;border-radius:10px;background:rgba(255,60,30,.22);border-color:rgba(255,60,30,.5)">직선</div>
-    <div class="tbtn" id="tb-l" style="width:33%;height:38%;bottom:0;left:0;border-radius:10px;background:rgba(80,200,60,.18);border-color:rgba(80,200,60,.4)">훅</div>
-    <div class="tbtn" id="tb-u" style="width:33%;height:38%;bottom:0;right:0;border-radius:10px;background:rgba(180,80,255,.18);border-color:rgba(180,80,255,.4)">어퍼</div>
-    <div class="tbtn" id="tb-block" style="width:28%;height:96%;top:2%;right:34%;border-radius:10px;background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.4);font-size:10px">블록</div>
-  </div>
-</div>
-
-<div id="bigmsg"></div>
-
-<!-- ④ Result -->
-<div id="s-result" class="screen off">
-  <div class="r-icon" id="r-icon"></div>
-  <div class="r-title" id="r-title"></div>
-  <div class="r-sub" id="r-sub"></div>
-  <div class="r-stars" id="r-stars"></div>
-  <div class="r-btns">
-    <button class="btn-g" id="btn-next"></button>
-    <button class="btn-sm" id="btn-retry">다시 도전</button>
-    <button class="btn-sm" id="btn-map">스테이지 맵</button>
-  </div>
-</div>
-
-<!-- ⑤ All Clear -->
-<div id="s-clear" class="screen off">
-  <h1>🏆 CHAMPION!</h1>
-  <p>모든 스테이지를 클리어했습니다!</p>
-  <div style="font-size:clamp(28px,6vw,44px);margin-bottom:20px">⭐⭐⭐⭐⭐</div>
-  <button class="btn-g" id="btn-restart">처음부터 다시</button>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-'use strict';
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
 
-// ══════════════════════════════════════════
-// STAGE CONFIG
-// ══════════════════════════════════════════
-const STAGES = [
-  {
-    name:'릭', fullName:'Rookie Rick', title:'초보 복서', icon:'😅',
-    style:'brawler',
-    shirt:0x4caf50, glove:0xffffff, skin:0xFFDBAC,
-    maxHp:80, maxStam:90,
-    stats:{hp:40,sp:30,pw:30,df:20},
-    ai:{speed:1.4, aggro:0.25, blockOdds:0.08, dmg:0.60},
-    desc:'느리고 방어가 허술한 신출내기. 잽으로 제압하자!',
-    ringColor:0x1a4a1a
-  },
-  {
-    name:'샘', fullName:'Street Sam', title:'거리의 복서', icon:'😤',
-    style:'boxer',
-    shirt:0x7b1fa2, glove:0xffeb3b, skin:0x8D5524,
-    maxHp:100, maxStam:100,
-    stats:{hp:55,sp:55,pw:50,df:40},
-    ai:{speed:2.0, aggro:0.38, blockOdds:0.22, dmg:0.78},
-    desc:'날카로운 잽과 발놀림. 거리 관리를 조심하자!',
-    ringColor:0x1a1a4a
-  },
-  {
-    name:'마이크', fullName:'Iron Mike', title:'아이언 파이터', icon:'😠',
-    style:'counter',
-    shirt:0x212121, glove:0xf44336, skin:0x3E2723,
-    maxHp:110, maxStam:110,
-    stats:{hp:65,sp:60,pw:70,df:65},
-    ai:{speed:2.3, aggro:0.45, blockOdds:0.38, dmg:0.92},
-    desc:'블록 후 강력한 카운터. 무리하게 치지 마라!',
-    ringColor:0x4a1a1a
-  },
-  {
-    name:'곰', fullName:'Black Bear', title:'파워 파이터', icon:'🐻',
-    style:'aggressive',
-    shirt:0x37474f, glove:0xff6f00, skin:0x4E342E,
-    maxHp:130, maxStam:120,
-    stats:{hp:80,sp:65,pw:85,df:45},
-    ai:{speed:2.7, aggro:0.68, blockOdds:0.18, dmg:1.10},
-    desc:'끊임없이 돌진하는 파워 파이터. 체력을 아끼자!',
-    ringColor:0x2a1a0a
-  },
-  {
-    name:'챔피언', fullName:'The Champion', title:'세계 챔피언 👑', icon:'👑',
-    style:'champion',
-    shirt:0xb7900a, glove:0xb71c1c, skin:0xFFDBAC,
-    maxHp:150, maxStam:150,
-    stats:{hp:95,sp:90,pw:90,df:85},
-    ai:{speed:3.1, aggro:0.70, blockOdds:0.42, dmg:1.30},
-    desc:'완벽한 복서. 모든 기술을 구사하는 최강의 챔피언!',
-    ringColor:0x3a2a00
-  }
-];
-
-// ══════════════════════════════════════════
-// AUDIO
-// ══════════════════════════════════════════
-class AudioSys {
-  constructor(){ this.ctx=null; this.master=null; this.enabled=true; this.bgmNodes=null }
+class SFX {
+  constructor(){ this.ctx=null; this.enabled=true; this.lastStep=0; }
   init(){
-    try{
-      if(!this.ctx) this.ctx=new(window.AudioContext||window.webkitAudioContext)();
-      if(this.ctx && this.ctx.state==='suspended') this.ctx.resume();
-      if(!this.master && this.ctx){
-        this.master=this.ctx.createGain();
-        this.master.gain.value=0.9;
-        this.master.connect(this.ctx.destination);
-      }
-    }catch(e){}
+    if(!this.enabled) return;
+    if(!this.ctx) this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+    if(this.ctx.state==='suspended') this.ctx.resume();
   }
-  _n(dur,freq,q,vol,dec){
-    if(!this.ctx)return;
-    const sr=this.ctx.sampleRate, buf=this.ctx.createBuffer(1,sr*dur,sr), d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
-    const src=this.ctx.createBufferSource(), f=this.ctx.createBiquadFilter(), g=this.ctx.createGain();
-    f.type='bandpass'; f.frequency.value=freq; f.Q.value=q;
+  toggle(){ this.enabled=!this.enabled; if(this.enabled) this.init(); }
+  tone(type,f0,f1,vol=0.08,dur=0.08){
+    if(!this.enabled) return; this.init(); if(!this.ctx) return;
     const t=this.ctx.currentTime;
-    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dec);
-    src.buffer=buf; src.connect(f); f.connect(g); g.connect(this.master||this.ctx.destination); src.start(t);
-  }
-  _o(type,f0,f1,vol,dec){
-    if(!this.ctx)return;
-    const o=this.ctx.createOscillator(), g=this.ctx.createGain(), t=this.ctx.currentTime;
+    const o=this.ctx.createOscillator();
+    const g=this.ctx.createGain();
     o.type=type; o.frequency.setValueAtTime(f0,t);
-    if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+dec);
-    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dec);
-    o.connect(g); g.connect(this.master||this.ctx.destination); o.start(t); o.stop(t+dec+.05);
+    if(f1) o.frequency.exponentialRampToValueAtTime(Math.max(20,f1), t+dur);
+    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(this.ctx.destination); o.start(t); o.stop(t+dur+0.02);
   }
-  bell(){ this._o('sine',880,320,.9,2.3); this._o('sine',1320,660,.3,1.1); this._o('sine',440,180,.4,2.8) }
-  hit(head){ this._n(.12,head?900:230,.6,1.8,.14); this._o('sine',head?130:70,30,.9,.12) }
-  miss(){ this._o('sawtooth',380,180,.12,.09) }
-  block(){ this._o('square',280,120,.25,.10); this._n(.06,400,1,.4,.08) }
-  crowd(v){ this._n(1.8,500,.25,v*.28,1.6); this._n(1.8,200,.3,v*.18,1.4) }
-  down(){ this.crowd(1.1); this._o('sine',220,40,.6,.7) }
-  ko(){ this.bell(); this.crowd(1.5) }
-  bgmOn(){
-    if(!this.ctx||!this.enabled||this.bgmNodes) return;
-    const mk=(type,f,v)=>{ const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.type=type; o.frequency.value=f; g.gain.value=v; o.connect(g); g.connect(this.master||this.ctx.destination); o.start(); return {o,g}; };
-    const a=mk('triangle',110,0.035), b=mk('sine',165,0.02), c=mk('square',82.5,0.012);
-    const lfo=this.ctx.createOscillator(), lfg=this.ctx.createGain();
-    lfo.type='sine'; lfo.frequency.value=0.18; lfg.gain.value=22;
-    lfo.connect(lfg); lfg.connect(a.o.frequency); lfo.start();
-    this.bgmNodes={a,b,c,lfo,lfg};
+  noise(vol=0.06,dur=0.05){
+    if(!this.enabled) return; this.init(); if(!this.ctx) return;
+    const sr=this.ctx.sampleRate, len=Math.floor(sr*dur), b=this.ctx.createBuffer(1,len,sr), d=b.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+    const src=this.ctx.createBufferSource(); const f=this.ctx.createBiquadFilter(); const g=this.ctx.createGain();
+    f.type='highpass'; f.frequency.value=700; g.gain.value=vol; g.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+dur);
+    src.buffer=b; src.connect(f); f.connect(g); g.connect(this.ctx.destination); src.start(); src.stop(this.ctx.currentTime+dur+0.01);
   }
-  bgmOff(){
-    if(!this.bgmNodes) return;
-    const ns=this.bgmNodes; ['a','b','c'].forEach(k=>{ try{ns[k].g.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+0.18); ns[k].o.stop(this.ctx.currentTime+0.22);}catch(e){} });
-    try{ ns.lfo.stop(this.ctx.currentTime+0.22);}catch(e){}
-    this.bgmNodes=null;
+  start(){ this.tone('triangle',520,260,0.11,0.12); }
+  move(){ this.tone('sine',300,260,0.03,0.04); }
+  rotate(){ this.tone('square',520,780,0.06,0.06); }
+  softDrop(){
+    const now=performance.now(); if(now-this.lastStep<60) return; this.lastStep=now;
+    this.tone('sine',170,120,0.03,0.03);
   }
-  setEnabled(on){ this.enabled=!!on; if(!on) this.bgmOff(); else this.bgmOn(); }
+  hardDrop(){ this.tone('sawtooth',240,70,0.08,0.09); this.noise(0.03,0.04); }
+  lock(){ this.tone('triangle',140,100,0.07,0.06); }
+  lineClear(n){
+    const seq = n===4 ? [440,660,880,1320] : n===3 ? [392,523,659] : n===2 ? [349,440] : [330];
+    seq.forEach((f,i)=>setTimeout(()=>this.tone('triangle',f,f*1.1,0.08,0.08), i*55));
+  }
+  levelUp(){ [523,659,784].forEach((f,i)=>setTimeout(()=>this.tone('triangle',f,f*1.2,0.09,0.1),i*80)); }
+  gameOver(){ [330,247,196,147].forEach((f,i)=>setTimeout(()=>this.tone('sine',f,Math.max(60,f*0.7),0.08,0.14),i*110)); }
 }
 
-// ══════════════════════════════════════════
-// BOXER MODEL
-// ══════════════════════════════════════════
-function buildBoxer(shirt,glove,skin){
-  const g=new THREE.Group(), p={};
-  const m=c=>new THREE.MeshPhongMaterial({color:c});
-  const b=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
-  const ms=(geo,mat,x,y,z)=>{ const mesh=new THREE.Mesh(geo,mat); mesh.position.set(x,y,z); mesh.castShadow=true; return mesh; };
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const holdCv = document.getElementById('holdCv');
+  const nextCv = document.getElementById('nextCv');
+  const hctx = holdCv.getContext('2d');
+  const nctx = nextCv.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const levelEl = document.getElementById('level');
+  const linesEl = document.getElementById('lines');
+  const bestEl = document.getElementById('best');
+  const btn = document.getElementById('btn');
+  const soundBtn = document.getElementById('soundBtn');
+  const sfx = new SFX();
 
-  const mS=m(shirt), mG=m(glove), mSk=m(skin), mSh=m(0xffffff), mSo=m(0x111111), mH=m(0x1a0800);
+  const COLS = 10, ROWS = 20, BLOCK = 32;
+  const W = COLS * BLOCK, H = ROWS * BLOCK;
+  canvas.width = W; canvas.height = H;
 
-  p.lShoe=ms(b(.24,.14,.40),mSo,-.16,.07,.05);
-  p.rShoe=ms(b(.24,.14,.40),mSo, .16,.07,.05);
-  g.add(p.lShoe,p.rShoe);
+  const COLORS = { I:'#22c55e', O:'#eab308', T:'#a855f7', S:'#06b6d4', Z:'#ef4444', J:'#3b82f6', L:'#f97316', G:'#718096' };
+  const SHAPES = {
+    I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], O:[[1,1],[1,1]],
+    T:[[0,1,0],[1,1,1],[0,0,0]], S:[[0,1,1],[1,1,0],[0,0,0]],
+    Z:[[1,1,0],[0,1,1],[0,0,0]], J:[[1,0,0],[1,1,1],[0,0,0]], L:[[0,0,1],[1,1,1],[0,0,0]],
+  };
+  const PIECES = Object.keys(SHAPES);
 
-  p.lLG=new THREE.Group(); p.lLG.position.set(-.15,.75,0);
-  p.rLG=new THREE.Group(); p.rLG.position.set( .15,.75,0);
-  const lm=ms(b(.22,.62,.22),mSh,0,-.31,0);
-  p.lLG.add(lm.clone()); p.rLG.add(lm.clone());
-  g.add(p.lLG,p.rLG);
+  const clone = m => m.map(r => r.slice());
+  const rotate = (m, dir) => {
+    const N = m.length, r = Array.from({length:N},()=>Array(N).fill(0));
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++) dir>0 ? (r[x][N-1-y]=m[y][x]) : (r[N-1-x][y]=m[y][x]);
+    return r;
+  };
+  const makeBoard = () => Array.from({length:ROWS},()=>Array(COLS).fill(''));
+  const bag7 = () => { const a=PIECES.slice(); for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; };
 
-  p.torso=ms(b(.68,.80,.44),mS,0,1.15,0); g.add(p.torso);
-  p.neck=ms(new THREE.CylinderGeometry(.13,.13,.18,8),mSk,0,1.64,0); g.add(p.neck);
+  let board = makeBoard(), queue = [], current = null, hold = null, holdUsed = false;
+  let score=0, lines=0, level=1, best=Number(localStorage.getItem('tetris.best')||0);
+  let running=false, paused=false, last=0, acc=0;
 
-  p.hGrp=new THREE.Group(); p.hGrp.position.set(0,1.82,0);
-  const hm=new THREE.Mesh(new THREE.SphereGeometry(.24,10,10),mSk); hm.castShadow=true;
-  const hair=new THREE.Mesh(new THREE.SphereGeometry(.246,10,6,0,Math.PI*2,0,Math.PI*.5),mH);
-  p.hGrp.add(hm,hair); g.add(p.hGrp);
-
-  function mkArm(side){
-    const ag=new THREE.Group(); ag.position.set(side*.44,1.42,0);
-    ag.add(ms(b(.19,.42,.20),mS,0,-.21,0));
-    ag.add(ms(b(.17,.36,.18),mSk,0,-.57,0));
-    const gv=ms(b(.22,.25,.30),mG,0,-.87,0); ag.add(gv);
-    ag.traverse(c=>{if(c.isMesh)c.castShadow=true});
-    return {ag,gv};
+  function interval(){ return Math.max(70, 760 - (level-1)*55); }
+  function refill(){ while(queue.length<7) queue.push(...bag7()); }
+  function pieceFrom(type){
+    let m=clone(SHAPES[type]);
+    if(type!=='I' && type!=='O'){ const r=Array.from({length:3},()=>Array(3).fill(0)); for(let y=0;y<m.length;y++) for(let x=0;x<m[0].length;x++) r[y][x]=m[y][x]; m=r; }
+    return { type, matrix:m, x:Math.floor((COLS-m[0].length)/2), y:-1 };
   }
-  const la=mkArm(-1); p.lAG=la.ag; p.lGv=la.gv;
-  const ra=mkArm(1);  p.rAG=ra.ag; p.rGv=ra.gv;
-  g.add(p.lAG,p.rAG);
-  p.lAG.rotation.set(-.55,0,.20);
-  p.rAG.rotation.set(-.55,0,-.20);
+  function spawn(){ refill(); current=pieceFrom(queue.shift()); holdUsed=false; if(collides(current)) gameOver(); }
+  function gameOver(){ sfx.gameOver(); running=false; paused=false; btn.textContent='Start'; }
+  function collides(p){
+    for(let y=0;y<p.matrix.length;y++) for(let x=0;x<p.matrix[y].length;x++) if(p.matrix[y][x]){
+      const bx=p.x+x, by=p.y+y;
+      if (bx<0||bx>=COLS||by>=ROWS) return true;
+      if (by>=0 && board[by][bx]) return true;
+    }
+    return false;
+  }
+  function merge(){
+    const {matrix,x:px,y:py,type}=current;
+    for(let y=0;y<matrix.length;y++) for(let x=0;x<matrix[y].length;x++) if(matrix[y][x]){ const by=py+y; if(by>=0) board[by][px+x]=type; }
+  }
+  function clearLines(){
+    let c=0;
+    outer: for(let y=ROWS-1;y>=0;y--){ for(let x=0;x<COLS;x++) if(!board[y][x]) continue outer; board.splice(y,1); board.unshift(Array(COLS).fill('')); c++; y++; }
+    if(c){
+      const prevLv=level;
+      score += [0,100,300,500,800][c] * level;
+      lines += c;
+      level = 1 + (lines/10|0);
+      sfx.lineClear(c);
+      if(level>prevLv) sfx.levelUp();
+    }
+  }
+  function lock(){ merge(); sfx.lock(); clearLines(); spawn(); }
+  function move(dx){ const t={...current,x:current.x+dx}; if(!collides(t)){ current.x+=dx; sfx.move(); } }
+  function softDrop(){ const t={...current,y:current.y+1}; if(!collides(t)){ current.y++; score++; sfx.softDrop(); } else lock(); }
+  function hardDrop(){ let d=0, t={...current}; while(true){ t.y++; if(collides(t)){ t.y--; break; } d++; } current.y=t.y; score += d*2; sfx.hardDrop(); lock(); }
+  function rotatePiece(dir){ if(current.type==='O') return; const r=rotate(current.matrix,dir); for(const k of [0,-1,1,-2,2]){ const t={...current,matrix:r,x:current.x+k}; if(!collides(t)){ current.matrix=r; current.x+=k; sfx.rotate(); return; } } }
+  function holdSwap(){ if(!current||holdUsed) return; holdUsed=true; const cur=current.type; if(!hold){ hold=cur; spawn(); } else { const sw=hold; hold=cur; current=pieceFrom(sw); if(collides(current)) gameOver(); } }
+  function ghostY(){ const t={...current}; while(true){ t.y++; if(collides(t)){ t.y--; return t.y; } } }
+  function reset(){ board=makeBoard(); queue=[]; current=null; hold=null; holdUsed=false; score=0; lines=0; level=1; last=0; acc=0; spawn(); draw(); hud(); }
 
-  g.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true}});
-  return {g,p};
-}
+  function drawCell(x,y,color,a=1){ const px=x*BLOCK, py=y*BLOCK; ctx.globalAlpha=a; ctx.fillStyle=color; ctx.fillRect(px+1,py+1,BLOCK-2,BLOCK-2); ctx.globalAlpha=1; }
+  function drawGrid(){ ctx.strokeStyle='rgba(255,255,255,.05)'; for(let x=1;x<COLS;x++){ ctx.beginPath(); ctx.moveTo(x*BLOCK,0); ctx.lineTo(x*BLOCK,H); ctx.stroke(); } for(let y=1;y<ROWS;y++){ ctx.beginPath(); ctx.moveTo(0,y*BLOCK); ctx.lineTo(W,y*BLOCK); ctx.stroke(); } }
+  function drawMini(c,mctx,type){
+    mctx.clearRect(0,0,c.width,c.height);
+    mctx.fillStyle='#090d18'; mctx.fillRect(0,0,c.width,c.height);
+    if(!type) return;
+    const m=SHAPES[type], size=Math.floor(c.width/6), ox=Math.floor((c.width-m[0].length*size)/2), oy=Math.floor((c.height-m.length*size)/2);
+    for(let y=0;y<m.length;y++) for(let x=0;x<m[y].length;x++) if(m[y][x]){ mctx.fillStyle=COLORS[type]; mctx.fillRect(ox+x*size, oy+y*size, size-2, size-2); }
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#06080b'; ctx.fillRect(0,0,W,H);
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) if(board[y][x]) drawCell(x,y,COLORS[board[y][x]]);
+    if(current){ const gy=ghostY(); for(let y=0;y<current.matrix.length;y++) for(let x=0;x<current.matrix[y].length;x++) if(current.matrix[y][x]){ const by=gy+y; if(by>=0) drawCell(current.x+x,by,COLORS.G,.22); } }
+    if(current){ for(let y=0;y<current.matrix.length;y++) for(let x=0;x<current.matrix[y].length;x++) if(current.matrix[y][x]){ const by=current.y+y; if(by>=0) drawCell(current.x+x,by,COLORS[current.type]); } }
+    drawGrid();
+    if(!running||paused){ ctx.fillStyle='rgba(0,0,0,.52)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#eef4ff'; ctx.textAlign='center'; ctx.font='700 30px system-ui'; ctx.fillText(!running?'TETRIS':'PAUSED',W/2,H/2-8); ctx.font='14px system-ui'; if(!running) ctx.fillText('Start 또는 R 키',W/2,H/2+20); }
+    drawMini(holdCv,hctx,hold); drawMini(nextCv,nctx,queue[0]);
+  }
+  function hud(){
+    if(score>best){ best=score; localStorage.setItem('tetris.best', String(best)); }
+    scoreEl.textContent=String(score); levelEl.textContent=String(level); linesEl.textContent=String(lines); bestEl.textContent=String(best);
+    btn.textContent = running ? (paused?'Resume':'Pause') : 'Start';
+    soundBtn.textContent = sfx.enabled ? '🔊 사운드 ON' : '🔇 사운드 OFF';
+  }
+  function tick(t){
+    if(!running){ draw(); hud(); return; }
+    if(paused){ draw(); hud(); requestAnimationFrame(tick); return; }
+    if(!last) last=t; acc += (t-last); last=t;
+    while(acc>=interval()){
+      acc-=interval();
+      const nxt={...current,y:current.y+1};
+      if(!collides(nxt)){ current.y++; sfx.softDrop(); }
+      else lock();
+    }
+    draw(); hud(); requestAnimationFrame(tick);
+  }
+  function start(){ if(!current) reset(); running=true; paused=false; last=0; acc=0; sfx.start(); requestAnimationFrame(tick); }
+  function togglePause(){ if(running) paused=!paused; }
 
-// ══════════════════════════════════════════
-// RING
-// ══════════════════════════════════════════
-function buildRing(scene, floorColor=0x1a237e){
-  const rg=new THREE.Group();
-  const m=c=>new THREE.MeshPhongMaterial({color:c});
-  const bx=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
-
-  const plat=new THREE.Mesh(bx(9,.65,9),m(0x5D3A1A)); plat.position.y=-.33; plat.receiveShadow=true; rg.add(plat);
-  const apron=new THREE.Mesh(bx(9,.12,9),m(floorColor)); apron.position.y=.06; rg.add(apron);
-  const canvas=new THREE.Mesh(bx(6.6,.10,6.6),m(0xd4b896)); canvas.position.y=.05; canvas.receiveShadow=true; rg.add(canvas);
-
-  // Center lines
-  const lm=m(0x8B6343);
-  const lH=new THREE.Mesh(bx(6.5,.01,.04),lm); lH.position.y=.11; rg.add(lH);
-  const lV=new THREE.Mesh(bx(.04,.01,6.5),lm); lV.position.y=.11; rg.add(lV);
-
-  const corners=[[-3,0,-3],[3,0,-3],[3,0,3],[-3,0,3]];
-  const pClr=[0xd32f2f,0xd32f2f,0x1565c0,0x1565c0];
-  corners.forEach(([x,,z],i)=>{
-    const pm=m(pClr[i]);
-    const post=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,2.3,8),pm); post.position.set(x,1.15,z); post.castShadow=true; rg.add(post);
-    const cap=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.15,8),pm); cap.position.set(x,2.37,z); rg.add(cap);
+  window.addEventListener('keydown', (e)=>{
+    const k=e.key;
+    if(k==='r'||k==='R'){ reset(); start(); return; }
+    if(!running){ if(k==='Enter'||k===' ') { reset(); start(); } return; }
+    if(k==='p'||k==='P'){ togglePause(); return; }
+    if(paused) return;
+    if(k==='ArrowLeft'){ e.preventDefault(); move(-1); }
+    else if(k==='ArrowRight'){ e.preventDefault(); move(1); }
+    else if(k==='ArrowDown'){ e.preventDefault(); softDrop(); }
+    else if(k==='ArrowUp'||k==='x'||k==='X'){ e.preventDefault(); rotatePiece(+1); }
+    else if(k==='z'||k==='Z'){ e.preventDefault(); rotatePiece(-1); }
+    else if(k===' '){ e.preventDefault(); hardDrop(); }
+    else if(k==='c'||k==='C'){ e.preventDefault(); holdSwap(); }
+    draw(); hud();
   });
 
-  [.7,1.2,1.7].forEach(h=>{
-    const rm=m(0xeeeeee);
-    [-3,3].forEach(z=>{ const r=new THREE.Mesh(new THREE.CylinderGeometry(.028,.028,6,6),rm); r.rotation.z=Math.PI/2; r.position.set(0,h,z); rg.add(r); });
-    [-3,3].forEach(x=>{ const r=new THREE.Mesh(new THREE.CylinderGeometry(.028,.028,6,6),rm); r.rotation.x=Math.PI/2; r.position.set(x,h,0); rg.add(r); });
-  });
+  btn.addEventListener('click', ()=>{ if(!running){ reset(); start(); } else togglePause(); draw(); hud(); });
+  soundBtn.addEventListener('click', ()=>{ sfx.toggle(); hud(); });
 
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),m(0x080812));
-  floor.rotation.x=-Math.PI/2; floor.position.y=-.66; floor.receiveShadow=true; rg.add(floor);
-
-  // Audience
-  const aClr=[0x3F51B5,0xF44336,0x4CAF50,0xFF9800,0x9C27B0,0xE91E63];
-  for(let i=0;i<52;i++){
-    const ang=(i/52)*Math.PI*2, r=9+Math.random()*4.5;
-    const x=Math.cos(ang)*r, z=Math.sin(ang)*r, h=.7+Math.random()*.55;
-    const pm=new THREE.Mesh(new THREE.BoxGeometry(.34,h,.34),new THREE.MeshPhongMaterial({color:aClr[i%aClr.length]}));
-    pm.position.set(x,h/2-.66,z); rg.add(pm);
-    const hm=new THREE.Mesh(new THREE.SphereGeometry(.17,6,6),new THREE.MeshPhongMaterial({color:0xFFDBAC}));
-    hm.position.set(x,h+.17-.66,z); rg.add(hm);
+  const bindTap=(id,fn)=>{ const el=document.getElementById(id); if(!el) return; const run=e=>{ e.preventDefault(); if(running&&!paused){ fn(); draw(); hud(); }}; el.addEventListener('touchstart',run,{passive:false}); el.addEventListener('mousedown',run); };
+  function bindRepeat(id, fn, first=130, repeat=70){
+    const el=document.getElementById(id); if(!el) return; let t1=null,t2=null;
+    const clear=()=>{ if(t1) clearTimeout(t1); if(t2) clearInterval(t2); t1=t2=null; };
+    const start=(e)=>{ e.preventDefault(); if(!running||paused) return; fn(); draw(); hud(); t1=setTimeout(()=>{ t2=setInterval(()=>{ if(running&&!paused){ fn(); draw(); hud(); } }, repeat); }, first); };
+    ['touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,start,{passive:false}));
+    ['touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>el.addEventListener(ev,clear));
   }
-  scene.add(rg);
-  return rg;
-}
+  bindRepeat('tLeft',()=>move(-1));
+  bindRepeat('tRight',()=>move(1));
+  bindRepeat('tDown',()=>softDrop(),120,60);
+  bindTap('tRot',()=>rotatePiece(+1)); bindTap('tDrop',()=>hardDrop()); bindTap('tHold',()=>holdSwap());
 
-// ══════════════════════════════════════════
-// GAME
-// ══════════════════════════════════════════
-const GS={TITLE:'TITLE',MAP:'MAP',VS:'VS',COUNTDOWN:'CD',FIGHT:'FT',DOWN:'DN',REND:'RE',WIN:'WIN',LOSE:'LS',CLEAR:'CL'};
+  let sx=0, sy=0, st=0, lastTap=0;
+  canvas.addEventListener('touchstart',(e)=>{ e.preventDefault(); const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; st=Date.now(); }, {passive:false});
+  canvas.addEventListener('touchend',(e)=>{
+    e.preventDefault();
+    if(!running){ reset(); start(); return; }
+    if(paused){ paused=false; draw(); hud(); return; }
+    const t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy, dt=Date.now()-st;
+    const adx=Math.abs(dx), ady=Math.abs(dy);
+    if(adx<14 && ady<14 && dt<220){ const now=Date.now(); if(now-lastTap<280) hardDrop(); else rotatePiece(+1); lastTap=now; }
+    else if(adx>ady){ dx>0 ? move(1) : move(-1); }
+    else { if(dy>24) softDrop(); else rotatePiece(+1); }
+    draw(); hud();
+  }, {passive:false});
 
-class BoxingGame {
-  constructor(){
-    this.audio=new AudioSys();
-    this.keys={};
-    this.gState=GS.TITLE;
-    this.stageIdx=0;
-    this.unlockedIdx=0;
-    this.stageStars=Array(STAGES.length).fill(0);
-    this.round=1; this.maxRound=3;
-    this.roundTime=90;
-    this.timer=this.roundTime;
-    this.pTotalScore=0; this.eTotalScore=0;
-    this.combo=0; this.lastHitT=0;
-    this.lastT=performance.now();
-    this._ringObj=null;
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden && running && !paused){ paused=true; draw(); hud(); } });
+  window.addEventListener('blur', ()=>{ if(running && !paused){ paused=true; draw(); hud(); } });
 
-    this._initRenderer();
-    this._buildScene();
-    this._initUI();
-    this._setupKeys();
-    this._setupTouch();
-    this._loop();
-  }
-
-  _initRenderer(){
-    this.canvas=document.getElementById('canvas');
-    this.renderer=new THREE.WebGLRenderer({canvas:this.canvas,antialias:true});
-    this.renderer.setSize(window.innerWidth,window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-    this.renderer.shadowMap.enabled=true;
-    this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-    this.scene=new THREE.Scene();
-    this.scene.background=new THREE.Color(0x080814);
-    this.scene.fog=new THREE.Fog(0x080814,22,55);
-    this.cam=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,100);
-    this.cam.position.set(0,4.5,9.5); this.cam.lookAt(0,1.2,0);
-    this._camLook=new THREE.Vector3(0,1.2,0);
-    window.addEventListener('resize',()=>{
-      this.cam.aspect=innerWidth/innerHeight; this.cam.updateProjectionMatrix();
-      this.renderer.setSize(innerWidth,innerHeight);
-    });
-  }
-
-  _buildScene(){
-    this.scene.add(new THREE.AmbientLight(0x304060,.45));
-    this._spot=new THREE.SpotLight(0xfff8e0,1.8,35,Math.PI/3.5,.45,1.2);
-    this._spot.position.set(0,13,0); this._spot.castShadow=true;
-    this._spot.shadow.mapSize.set(1024,1024);
-    this.scene.add(this._spot,this._spot.target);
-    this.scene.add(Object.assign(new THREE.PointLight(0x4466ff,.6,18),{position:{x:-6,y:5,z:-5}}));
-    this.scene.add(Object.assign(new THREE.PointLight(0xff4422,.6,18),{position:{x:6,y:5,z:-5}}));
-
-    this._ringObj=buildRing(this.scene, STAGES[0].ringColor);
-
-    const pb=buildBoxer(0x1565c0,0xe53935,0xFFDBAC);
-    this.pGrp=pb.g; this.pParts=pb.p;
-    this.pGrp.position.set(0,0,2.8);
-    this.scene.add(this.pGrp);
-
-    const eb=buildBoxer(STAGES[0].shirt,STAGES[0].glove,STAGES[0].skin);
-    this.eGrp=eb.g; this.eParts=eb.p;
-    this.eGrp.position.set(0,0,-2.8);
-    this.scene.add(this.eGrp);
-
-    this.P=this._mkF(); this.E=this._mkF();
-
-    // Hit flash
-    const fm=c=>new THREE.Mesh(new THREE.SphereGeometry(.32,8,8),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0}));
-    this.pFlash=fm(0xffffff); this.eFlash=fm(0xffffff);
-    this.scene.add(this.pFlash,this.eFlash);
-  }
-
-  _mkF(){
-    const s=STAGES[this.stageIdx]||STAGES[0];
-    return{hp:s.maxHp,maxHp:s.maxHp,stam:s.maxStam,maxStam:s.maxStam,
-      isBlocking:false,isPunching:false,punchT:0,punchType:null,
-      cooldown:0,isDown:false,aiTimer:0,aiAct:'idle'};
-  }
-
-  _rebuildEnemy(){
-    this.scene.remove(this.eGrp);
-    const s=STAGES[this.stageIdx];
-    const eb=buildBoxer(s.shirt,s.glove,s.skin);
-    this.eGrp=eb.g; this.eParts=eb.p;
-    this.eGrp.position.set(0,0,-2.8);
-    this.scene.add(this.eGrp);
-    // Rebuild ring color
-    this.scene.remove(this._ringObj);
-    this._ringObj=buildRing(this.scene, s.ringColor);
-  }
-
-  // ── UI SETUP ──
-  _initUI(){
-    // Stage map build
-    this._buildStageMap();
-
-    document.getElementById('btn-career').onclick=()=>{ this.audio.init(); this.audio.bgmOn(); this._showMap(); };
-    const sndBtn=document.getElementById('btn-sound');
-    sndBtn.onclick=()=>{ this.audio.init(); this.audio.setEnabled(!this.audio.enabled); sndBtn.textContent=this.audio.enabled?'🔊 사운드 ON':'🔇 사운드 OFF'; };
-    document.getElementById('btn-back-title').onclick=()=>this._showScreen('s-title');
-    document.getElementById('btn-fight').onclick=()=>this._startFight();
-    document.getElementById('btn-restart').onclick=()=>{ this.stageIdx=0; this.unlockedIdx=0; this.stageStars=Array(STAGES.length).fill(0); this._buildStageMap(); this._showMap(); };
-
-    // Responsive stamina & hint position
-    const isMobile='ontouchstart' in window;
-    const sw=document.getElementById('stamw');
-    const hint=document.getElementById('hint');
-    const tc=document.getElementById('tc');
-    if(isMobile){ tc.style.display='block'; hint.style.display='none'; sw.style.bottom=clamp(120,22,150)+'px'; }
-    else{ hint.style.display='none'; sw.style.bottom='18px'; }
-    sw.style.left='50%'; sw.style.transform='translateX(-50%)';
-    document.getElementById('combo').style.top='72px';
-  }
-
-  _buildStageMap(){
-    const grid=document.getElementById('stages-grid');
-    grid.innerHTML='';
-    STAGES.forEach((s,i)=>{
-      const locked=i>this.unlockedIdx;
-      const cleared=this.stageStars[i]>0;
-      const current=i===this.stageIdx;
-      const card=document.createElement('div');
-      card.className='sc'+(locked?' locked':'')+(cleared?' cleared':'')+(current?' current':'');
-      const stars='⭐'.repeat(this.stageStars[i])+'☆'.repeat(3-this.stageStars[i]);
-      card.innerHTML=`
-        <div class="sc-num">STAGE ${i+1}</div>
-        <div class="sc-icon">${locked?'🔒':s.icon}</div>
-        <div class="sc-name">${locked?'???':s.fullName}</div>
-        <div class="sc-desc">${locked?'이전 스테이지를 클리어하세요':s.desc}</div>
-        <div class="sc-stars">${locked?'☆☆☆':stars}</div>`;
-      if(!locked) card.onclick=()=>this._selectStage(i);
-      grid.appendChild(card);
-    });
-  }
-
-  _selectStage(i){
-    this.stageIdx=i;
-    this._rebuildEnemy();
-    this._showVS();
-  }
-
-  _showVS(){
-    const s=STAGES[this.stageIdx];
-    document.getElementById('vs-e-icon').textContent=s.icon;
-    document.getElementById('vs-e-name').textContent=s.fullName;
-    document.getElementById('vs-e-title').textContent=s.title;
-    ['hp','sp','pw','df'].forEach(k=>{
-      const v=s.stats[k];
-      document.getElementById('vs-'+k).style.width=v+'%';
-      document.getElementById('vs-'+k+'-v').textContent=v;
-    });
-    this._showScreen('s-vs');
-  }
-
-  _showMap(){ this._buildStageMap(); this._showScreen('s-stages'); }
-
-  _showScreen(id){
-    ['s-title','s-stages','s-vs','s-result','s-clear'].forEach(s=>{
-      document.getElementById(s).classList.toggle('off',s!==id);
-    });
-  }
-
-  // ── FIGHT ──
-  _startFight(){
-    this.audio.init();
-    if(this.audio.enabled) this.audio.bgmOn();
-    this._showScreen('__none__'); // hide all screens
-    document.getElementById('hud').style.display='block';
-    document.getElementById('stamw').style.display='block';
-    const isMobile='ontouchstart' in window;
-    if(isMobile) document.getElementById('tc').style.display='block';
-    else document.getElementById('hint').style.display='block';
-
-    this.round=1; this.pTotalScore=0; this.eTotalScore=0; this.combo=0;
-    document.getElementById('hud-e-name').textContent=STAGES[this.stageIdx].fullName+' 🔴';
-    document.getElementById('stage-d').textContent=`STAGE ${this.stageIdx+1}`;
-    this._resetRound();
-    this._startRound();
-  }
-
-  _resetRound(){
-    const s=STAGES[this.stageIdx];
-    this.P={hp:100,maxHp:100,stam:100,maxStam:100,isBlocking:false,isPunching:false,punchT:0,punchType:null,cooldown:0,isDown:false,aiTimer:0,aiAct:'idle'};
-    this.E={hp:s.maxHp,maxHp:s.maxHp,stam:s.maxStam,maxStam:s.maxStam,isBlocking:false,isPunching:false,punchT:0,punchType:null,cooldown:0,isDown:false,aiTimer:0,aiAct:'idle'};
-    this.timer=this.roundTime;
-    this.pGrp.position.set(0,0,2.8); this.eGrp.position.set(0,0,-2.8);
-    this.pGrp.rotation.set(0,0,0); this.eGrp.rotation.set(0,0,0);
-    this._resetPose(this.pParts); this._resetPose(this.eParts);
-    this._updateHUD();
-  }
-
-  _startRound(){
-    document.getElementById('rnd-d').textContent=`ROUND ${this.round}/${this.maxRound}`;
-    this._showMsg(`ROUND ${this.round}`, 68, 1700);
-    this.gState=GS.COUNTDOWN;
-    setTimeout(()=>{ this.audio.bell(); this._showMsg('FIGHT!',72,900); setTimeout(()=>{ this.gState=GS.FIGHT; },900); },1700);
-  }
-
-  // ── PUNCH ──
-  _doPunch(isP, type){
-    const f=isP?this.P:this.E, tF=isP?this.E:this.P;
-    const tG=isP?this.eGrp:this.pGrp, sG=isP?this.pGrp:this.eGrp;
-    const flash=isP?this.eFlash:this.pFlash;
-    const tParts=isP?this.eParts:this.pParts;
-
-    if(f.cooldown>0||f.isDown||f.isBlocking) return;
-    const cost={jab:8,straight:13,hook:16,uppercut:20}[type];
-    if(f.stam<cost) return;
-
-    f.isPunching=true; f.punchType=type; f.punchT=0;
-    f.cooldown={jab:.37,straight:.47,hook:.57,uppercut:.51}[type];
-    f.stam-=cost;
-
-    const dist=sG.position.distanceTo(tG.position);
-    const range={jab:2.7,straight:2.6,hook:2.4,uppercut:2.2}[type];
-    const ai=STAGES[this.stageIdx].ai;
-
-    if(dist<=range){
-      const base={jab:8,straight:16,hook:20,uppercut:26}[type];
-      const stageMult=isP?1.0:ai.dmg;
-      const dmg=tF.isBlocking?base*.12*stageMult:base*stageMult;
-
-      if(tF.isBlocking){ this.audio.block(); }
-      else{
-        this.audio.hit(type!=='hook');
-        this.audio.crowd(.25+dmg/120);
-        flash.position.copy(tG.position); flash.position.y+=1.78; flash.material.opacity=.75;
-        this._shakeHead(tParts);
-        if(isP){ this._spawnDmg(Math.round(dmg), tG); }
-        // Combo
-        const now=performance.now();
-        if(isP){
-          if(now-this.lastHitT<1800) this.combo++; else this.combo=1;
-          this.lastHitT=now;
-          this._showCombo();
-        }
-      }
-
-      tF.hp=Math.max(0,tF.hp-dmg);
-      if(isP) this.pTotalScore+=Math.ceil(dmg); else this.eTotalScore+=Math.ceil(dmg);
-      if(tF.hp<=0&&!tF.isDown) this._knockdown(!isP);
-    } else {
-      this.audio.miss();
-    }
-    this._updateHUD();
-  }
-
-  _showCombo(){
-    if(this.combo<2) return;
-    const el=document.getElementById('combo');
-    const msgs=['','','2 COMBO!','3 COMBO!','4 COMBO!!','5 COMBO!!!','SUPER COMBO!!'];
-    el.textContent=msgs[Math.min(this.combo,6)]||`${this.combo} COMBO!!!`;
-    el.style.display='block';
-    el.style.fontSize=this.combo>=5?'30px':'22px';
-    clearTimeout(this._comboTO);
-    this._comboTO=setTimeout(()=>{ el.style.display='none'; this.combo=0; },1600);
-  }
-
-  _spawnDmg(val, tG){
-    const v3=tG.position.clone(); v3.y+=2.0;
-    v3.project(this.cam);
-    const x=(v3.x*.5+.5)*innerWidth + (Math.random()-.5)*40;
-    const y=(-.v3.y*.5+.5)*innerHeight - 20;
-    const el=document.createElement('div');
-    el.className='dmg-float';
-    el.textContent='-'+val;
-    el.style.cssText=`left:${x}px;top:${y}px;color:${val>20?'#ff4444':'#ffaa00'};font-size:${val>20?22:16}px`;
-    document.body.appendChild(el);
-    setTimeout(()=>el.remove(),900);
-  }
-
-  _knockdown(isPlayer){
-    this.audio.down(); this.gState=GS.DOWN;
-    const grp=isPlayer?this.pGrp:this.eGrp, f=isPlayer?this.P:this.E;
-    f.isDown=true;
-    grp.rotation.z=isPlayer?.4:-.4; grp.position.y=-.28;
-    this._showMsg('DOWN!',68,1400);
-    setTimeout(()=>{
-      if(f.hp<=0){ this._endRound(!isPlayer); }
-      else{
-        f.hp=10; f.isDown=false;
-        grp.rotation.z=0; grp.position.y=0;
-        this.gState=GS.FIGHT;
-        this._showMsg('CONTINUE!',52,900);
-      }
-    },3200);
-  }
-
-  _endRound(playerWon){
-    this.gState=GS.REND; this.audio.bell();
-    const msg=playerWon?`ROUND ${this.round}\nYOU WIN!`:`ROUND ${this.round}\nCPU WIN!`;
-    this._showMsg(msg,56,2000);
-    setTimeout(()=>{
-      if(this.round>=this.maxRound){
-        this._showFightResult();
-      } else {
-        this.round++;
-        this._resetRound();
-        this._startRound();
-      }
-    },2800);
-  }
-
-  _showFightResult(){
-    this.gState=GS.WIN;
-    const playerWon=this.pTotalScore>this.eTotalScore||
-      (this.P.hp>this.E.hp&&this.pTotalScore===this.eTotalScore);
-    const hpLeft=this.P.hp/this.P.maxHp;
-    const stars=playerWon?(hpLeft>.66?3:hpLeft>.33?2:1):0;
-
-    this._hideHUD();
-
-    if(playerWon){
-      this.audio.ko();
-      this.stageStars[this.stageIdx]=Math.max(this.stageStars[this.stageIdx],stars);
-      if(this.stageIdx>=this.unlockedIdx) this.unlockedIdx=Math.min(STAGES.length-1,this.stageIdx+1);
-      document.getElementById('r-icon').textContent='🏆';
-      document.getElementById('r-title').textContent='VICTORY!';
-      document.getElementById('r-title').style.color='#ffd700';
-      document.getElementById('r-sub').textContent=`${STAGES[this.stageIdx].fullName} 격파! 점수: ${this.pTotalScore}`;
-      document.getElementById('r-stars').textContent='⭐'.repeat(stars)+'☆'.repeat(3-stars);
-      const isLast=this.stageIdx===STAGES.length-1;
-      const btnNext=document.getElementById('btn-next');
-      btnNext.textContent=isLast?'🏆 명예의 전당':'다음 스테이지 →';
-      btnNext.onclick=()=>{ if(isLast){ this._showScreen('s-clear'); }else{ this.stageIdx++; this._rebuildEnemy(); this._showVS(); } };
-    } else {
-      this.audio.crowd(.3);
-      document.getElementById('r-icon').textContent='😔';
-      document.getElementById('r-title').textContent='DEFEAT...';
-      document.getElementById('r-title').style.color='#ff4444';
-      document.getElementById('r-sub').textContent=`점수: ${this.pTotalScore} vs CPU: ${this.eTotalScore}`;
-      document.getElementById('r-stars').textContent='☆☆☆';
-      const btnNext=document.getElementById('btn-next');
-      btnNext.textContent='다시 도전 🔁';
-      btnNext.onclick=()=>this._startFight();
-    }
-
-    document.getElementById('btn-retry').onclick=()=>this._startFight();
-    document.getElementById('btn-map').onclick=()=>{ this._showMap(); };
-    this._showScreen('s-result');
-  }
-
-  _hideHUD(){
-    document.getElementById('hud').style.display='none';
-    document.getElementById('stamw').style.display='none';
-    document.getElementById('hint').style.display='none';
-    document.getElementById('tc').style.display='none';
-    document.getElementById('combo').style.display='none';
-    document.getElementById('bigmsg').style.display='none';
-  }
-
-  // ── AI ──
-  _updateAI(dt){
-    if(this.gState!==GS.FIGHT||this.E.isDown) return;
-    this.E.aiTimer-=dt;
-
-    const s=STAGES[this.stageIdx], ai=s.ai;
-    const dist=this.eGrp.position.distanceTo(this.pGrp.position);
-    const toP=new THREE.Vector3().subVectors(this.pGrp.position,this.eGrp.position).setY(0);
-    const dLen=toP.length(); if(dLen>.01) toP.divideScalar(dLen);
-    const right=new THREE.Vector3(toP.z,0,-toP.x);
-
-    // Style-based decision
-    if(this.E.aiTimer<=0){
-      const r=Math.random();
-      switch(s.style){
-        case 'brawler': // rushes, rarely blocks
-          if(dist>2.4) this.E.aiAct='advance';
-          else if(r<.55) this.E.aiAct='punch_'+['jab','jab','hook'][Math.floor(r*3*1.9)];
-          else this.E.aiAct='advance';
-          this.E.aiTimer=.28+Math.random()*.2;
-          break;
-        case 'boxer': // range control, balanced
-          if(dist>3.0) this.E.aiAct='advance';
-          else if(dist<2.0) this.E.aiAct='retreat';
-          else if(r<.22) this.E.aiAct='block';
-          else if(r<.22+ai.aggro) this.E.aiAct='punch_'+['jab','straight','hook','jab'][Math.floor(Math.random()*4)];
-          else this.E.aiAct=r<.7?'advance':'retreat';
-          this.E.aiTimer=.35+Math.random()*.25;
-          break;
-        case 'counter': // waits and counters
-          if(dist>3.0){ this.E.aiAct='advance'; }
-          else if(this.P.isPunching&&r<.62){ this.E.aiAct='block'; }
-          else if(r<ai.blockOdds*1.2){ this.E.aiAct='block'; }
-          else if(r<ai.blockOdds*1.2+ai.aggro){ this.E.aiAct='punch_'+['straight','uppercut','hook'][Math.floor(Math.random()*3)]; }
-          else this.E.aiAct='idle';
-          this.E.aiTimer=.4+Math.random()*.3;
-          break;
-        case 'aggressive': // relentless offense
-          if(dist>2.2) this.E.aiAct='advance';
-          else if(r<ai.aggro*1.25) this.E.aiAct='punch_'+['jab','straight','hook','uppercut','jab','jab'][Math.floor(Math.random()*6)];
-          else this.E.aiAct='advance';
-          this.E.aiTimer=.22+Math.random()*.15;
-          break;
-        case 'champion': // adaptive
-        default:
-          if(dist>3.0){ this.E.aiAct='advance'; }
-          else if(dist<1.8){ this.E.aiAct='retreat'; }
-          else if(this.P.isPunching&&r<.45){ this.E.aiAct='block'; }
-          else if(r<ai.blockOdds){ this.E.aiAct='block'; }
-          else if(r<ai.blockOdds+ai.aggro){
-            const seq=['jab','straight','jab','hook','uppercut','straight'];
-            this.E.aiAct='punch_'+seq[Math.floor(Math.random()*seq.length)];
-          } else {
-            this.E.aiAct=r<.6?'advance':'idle';
-            // Lateral drift for champion
-            this.eGrp.position.addScaledVector(right,Math.sin(performance.now()*.003)*.8*dt);
-          }
-          this.E.aiTimer=.3+Math.random()*.2;
-          break;
-      }
-    }
-
-    // Execute action
-    if(this.E.aiAct==='advance') this.eGrp.position.addScaledVector(toP,ai.speed*dt);
-    else if(this.E.aiAct==='retreat') this.eGrp.position.addScaledVector(toP,-ai.speed*.8*dt);
-    else if(this.E.aiAct.startsWith('punch_')){ this._doPunch(false,this.E.aiAct.slice(6)); this.E.aiAct='idle'; }
-    this.E.isBlocking=this.E.aiAct==='block';
-
-    // Clamp ring
-    this.eGrp.position.x=Math.max(-2.7,Math.min(2.7,this.eGrp.position.x));
-    this.eGrp.position.z=Math.max(-2.7,Math.min(2.7,this.eGrp.position.z));
-
-    // Stamina
-    this.E.stam=Math.min(this.E.maxStam,this.E.stam+(this.E.isPunching?3:this.E.isBlocking?5:14)*dt);
-    if(this.E.cooldown>0) this.E.cooldown-=dt;
-    if(this.E.isPunching){ this.E.punchT+=dt; if(this.E.punchT>.28){this.E.isPunching=false;this.E.punchT=0;} }
-  }
-
-  // ── PLAYER ──
-  _updatePlayer(dt){
-    if(this.gState!==GS.FIGHT||this.P.isDown) return;
-    const pp=this.pGrp.position, ep=this.eGrp.position;
-    const toE=new THREE.Vector3().subVectors(ep,pp).setY(0); const d=toE.length(); if(d>.01) toE.divideScalar(d);
-    const right=new THREE.Vector3(toE.z,0,-toE.x);
-    const spd=3.2;
-    if(this.keys['KeyW']||this.keys['ArrowUp'])    pp.addScaledVector(toE, spd*dt);
-    if(this.keys['KeyS']||this.keys['ArrowDown'])  pp.addScaledVector(toE,-spd*dt);
-    if(this.keys['KeyA']||this.keys['ArrowLeft'])  pp.addScaledVector(right,-spd*dt);
-    if(this.keys['KeyD']||this.keys['ArrowRight']) pp.addScaledVector(right, spd*dt);
-    pp.x=Math.max(-2.7,Math.min(2.7,pp.x)); pp.z=Math.max(-2.7,Math.min(2.7,pp.z));
-    this._face(this.pGrp,ep);
-    this.P.isBlocking=!!this.keys['Space'];
-    if(this.P.cooldown>0) this.P.cooldown-=dt;
-    if(this.P.isPunching){ this.P.punchT+=dt; if(this.P.punchT>.28){this.P.isPunching=false;this.P.punchT=0;} }
-    this.P.stam=Math.min(this.P.maxStam,this.P.stam+(this.P.isPunching?2:this.P.isBlocking?6:18)*dt);
-  }
-
-  _face(grp,tgt){ grp.rotation.y=Math.atan2(tgt.x-grp.position.x,tgt.z-grp.position.z); }
-
-  // ── ANIMATION ──
-  _animAll(dt){
-    const t=performance.now()*.001;
-    const mv=this.keys['KeyW']||this.keys['KeyS']||this.keys['KeyA']||this.keys['KeyD']||this.keys['ArrowUp']||this.keys['ArrowDown']||this.keys['ArrowLeft']||this.keys['ArrowRight'];
-    this._animFighter(this.pParts,this.P,dt,t,mv);
-    this._animFighter(this.eParts,this.E,dt,t,this.E.aiAct==='advance');
-    // Facing
-    if(!this.E.isDown) this._face(this.eGrp,this.pGrp.position);
-    if(!this.P.isDown) this._face(this.pGrp,this.eGrp.position);
-    // Flash fade
-    [this.pFlash,this.eFlash].forEach(f=>{ if(f.material.opacity>0) f.material.opacity=Math.max(0,f.material.opacity-dt*9); });
-  }
-
-  _animFighter(p,f,dt,t,moving){
-    if(f.isDown) return;
-    const bob=Math.sin(t*4.5)*.025;
-    p.torso.position.y=1.15+bob; p.neck.position.y=1.64+bob; p.hGrp.position.y=1.82+bob;
-    p.torso.rotation.z=Math.sin(t*1.5)*.012;
-
-    let lRx=-.55,lRz=.20,rRx=-.55,rRz=-.20;
-    if(f.isBlocking){ lRx=-1.08;lRz=.40;rRx=-1.08;rRz=-.40; }
-    if(f.isPunching){
-      const ext=Math.sin((f.punchT/.28)*Math.PI);
-      switch(f.punchType){
-        case 'jab':      lRx=-.55-ext*1.1; break;
-        case 'straight': rRx=-.55-ext*1.2; break;
-        case 'hook':     lRx=-.55-ext*.5; lRz=.20+ext*1.0; break;
-        case 'uppercut': rRx=-.55-ext*1.6; rRz=-.20-ext*.5; break;
-      }
-    }
-    const ls=dt*14;
-    p.lAG.rotation.x=THREE.MathUtils.lerp(p.lAG.rotation.x,lRx,ls);
-    p.lAG.rotation.z=THREE.MathUtils.lerp(p.lAG.rotation.z,lRz,ls);
-    p.rAG.rotation.x=THREE.MathUtils.lerp(p.rAG.rotation.x,rRx,ls);
-    p.rAG.rotation.z=THREE.MathUtils.lerp(p.rAG.rotation.z,rRz,ls);
-    if(moving){ p.lLG.rotation.x=Math.sin(t*9)*.28; p.rLG.rotation.x=-Math.sin(t*9)*.28; }
-    else{ p.lLG.rotation.x=THREE.MathUtils.lerp(p.lLG.rotation.x,0,dt*8); p.rLG.rotation.x=THREE.MathUtils.lerp(p.rLG.rotation.x,0,dt*8); }
-  }
-
-  _resetPose(p){
-    p.lAG.rotation.set(-.55,0,.20); p.rAG.rotation.set(-.55,0,-.20);
-    p.lLG.rotation.set(0,0,0); p.rLG.rotation.set(0,0,0);
-  }
-
-  _shakeHead(parts){ const h=parts.hGrp; let t=0; const iv=setInterval(()=>{ t+=.06; h.position.x=Math.sin(t*18)*.12*(1-t); if(t>=1){h.position.x=0;clearInterval(iv);} },16); }
-
-  // ── TIMER ──
-  _updateTimer(dt){
-    if(this.gState!==GS.FIGHT) return;
-    this.timer-=dt;
-    const m=Math.floor(this.timer/60), s=Math.floor(Math.max(0,this.timer%60));
-    document.getElementById('tmr-d').textContent=`${m}:${s.toString().padStart(2,'0')}`;
-    if(this.timer<=0){
-      this.timer=0; this.audio.bell(); this.gState=GS.REND;
-      if(this.round>=this.maxRound){ this._showFightResult(); }
-      else{ this._showMsg(`END OF\nROUND ${this.round}`,52,1800); setTimeout(()=>{this.round++;this._resetRound();this._startRound();},2600); }
-    }
-  }
-
-  // ── HUD ──
-  _updateHUD(){
-    const ph=(this.P.hp/this.P.maxHp)*100, eh=(this.E.hp/this.E.maxHp)*100, ps=(this.P.stam/this.P.maxStam)*100;
-    document.getElementById('php').style.width=ph+'%';
-    document.getElementById('ehp').style.width=eh+'%';
-    document.getElementById('stamfil').style.width=ps+'%';
-    const hpEl=document.getElementById('php');
-    hpEl.style.background=ph<25?'#f44336':ph<50?'linear-gradient(90deg,#ff9800,#ffc107)':'linear-gradient(90deg,#00e676,#69f0ae)';
-    const stEl=document.getElementById('stamfil');
-    stEl.style.background=ps<25?'#f44336':ps<50?'linear-gradient(90deg,#ff9800,#ffc107)':'linear-gradient(90deg,#2979ff,#40c4ff)';
-  }
-
-  // ── CAMERA ──
-  _updateCam(dt){
-    const pp=this.pGrp.position, ep=this.eGrp.position;
-    const mid=new THREE.Vector3().addVectors(pp,ep).multiplyScalar(.5);
-    const dist=pp.distanceTo(ep);
-    const tP=new THREE.Vector3(mid.x*.22,4.5,mid.z*.28+7.2+dist*.45);
-    const tL=new THREE.Vector3(mid.x,1.3,mid.z);
-    this.cam.position.lerp(tP,dt*2.8);
-    this._camLook.lerp(tL,dt*2.8);
-    this.cam.lookAt(this._camLook);
-  }
-
-  // ── KEYS & TOUCH ──
-  _setupKeys(){
-    document.addEventListener('keydown',e=>{
-      this.keys[e.code]=true;
-      if((this.gState!==GS.FIGHT)||e.repeat) return;
-      if(e.code==='KeyJ') this._doPunch(true,'jab');
-      if(e.code==='KeyK') this._doPunch(true,'straight');
-      if(e.code==='KeyL') this._doPunch(true,'hook');
-      if(e.code==='KeyU') this._doPunch(true,'uppercut');
-      if(e.code==='Space') e.preventDefault();
-    });
-    document.addEventListener('keyup',e=>{ this.keys[e.code]=false; });
-  }
-
-  _setupTouch(){
-    const mv=(id,key)=>{
-      const el=document.getElementById(id); if(!el) return;
-      el.addEventListener('touchstart',e=>{e.preventDefault();this.keys[key]=true},{passive:false});
-      el.addEventListener('touchend',  e=>{e.preventDefault();this.keys[key]=false},{passive:false});
-      el.addEventListener('touchcancel',()=>{this.keys[key]=false});
-    };
-    const punch=(id,type)=>{
-      const el=document.getElementById(id); if(!el) return;
-      el.addEventListener('touchstart',e=>{e.preventDefault();if(this.gState===GS.FIGHT)this._doPunch(true,type);},{passive:false});
-    };
-    mv('tb-up','KeyW'); mv('tb-down','KeyS'); mv('tb-left','KeyA'); mv('tb-right','KeyD');
-    mv('tb-block','Space');
-    punch('tb-j','jab'); punch('tb-k','straight'); punch('tb-l','hook'); punch('tb-u','uppercut');
-  }
-
-  // ── MESSAGES ──
-  _showMsg(txt,size,dur){
-    const el=document.getElementById('bigmsg');
-    el.textContent=txt; el.style.fontSize=(size||68)+'px'; el.style.display='block';
-    clearTimeout(this._msgTO);
-    this._msgTO=setTimeout(()=>{el.style.display='none';},dur||1500);
-  }
-
-  // ── LOOP ──
-  _loop(){
-    requestAnimationFrame(()=>this._loop());
-    const now=performance.now(), dt=Math.min((now-this.lastT)/1000,.05);
-    this.lastT=now;
-
-    const active=this.gState===GS.FIGHT||this.gState===GS.DOWN||this.gState===GS.COUNTDOWN||this.gState===GS.REND;
-    if(this.gState===GS.FIGHT){ this._updatePlayer(dt); this._updateAI(dt); this._updateTimer(dt); this._updateHUD(); }
-    if(active) this._animAll(dt);
-    this._updateCam(dt);
-    this.renderer.render(this.scene,this.cam);
-  }
-}
-
-function clamp(px,vw,max){ return Math.max(px,Math.min(max,(innerWidth*vw)/100)); }
-window.addEventListener('load',()=>{ new BoxingGame(); });
+  reset(); draw(); hud();
+})();
 </script>
 </body>
 </html>
